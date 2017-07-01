@@ -25,6 +25,7 @@ import wifiphisher.common.firewall as firewall
 import wifiphisher.common.accesspoint as accesspoint
 import wifiphisher.common.tui as tui
 
+
 # Fixes UnicodeDecodeError for ESSIDs
 reload(sys)
 sys.setdefaultencoding('utf8')
@@ -88,6 +89,11 @@ def parse_args():
         help=("Add WPA/WPA2 protection on the rogue Access Point. " +
               "Example: -pK s3cr3tp4ssw0rd"))
     parser.add_argument(
+        "-hC",
+        "--handshakecapture",
+        help=("Capture of the WPA/WPA2 handshakes for verifying passphrase" +
+              "Example : -hC capture.pcap"))
+    parser.add_argument(
         "-qS",
         "--quitonsuccess",
         help=("Stop the script after successfully retrieving one pair of "
@@ -135,6 +141,21 @@ def check_args(args):
             '-' +
             W +
             '] Pre-shared key must be between 8 and 63 printable characters.')
+    if args.handshakecapture and not args.presharedkey:
+        sys.exit(
+            '[' +
+            R +
+            '-' +
+            W +
+            '] handshake-capture should be used with the presharekey option.')
+
+    if args.handshakecapture and not os.path.isfile(
+            args.handshakecapture):
+        sys.exit('[' +
+                 R +
+                 '-' +
+                 W +
+                 '] handshake capture does not exist.')
 
     if ((args.jamminginterface and not args.apinterface) or
             (not args.jamminginterface and args.apinterface)) and \
@@ -753,6 +774,8 @@ class WifiphisherEngine:
             extensions = DEFAULT_EXTENSIONS
             if args.lure10_exploit:
                 extensions.append(LURE10_EXTENSION)
+            if args.presharedkey:
+                extensions.append(FOURWAY_EXTENSION)
             self.em.set_extensions(extensions)
             self.em.init_extensions(shared_data)
             self.em.start_extensions()
