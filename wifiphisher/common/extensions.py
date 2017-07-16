@@ -226,6 +226,18 @@ class ExtensionManager(object):
                 output += m_output
         return output
 
+    def verify_cred(self, cred):
+        for extension in self._extensions:
+            # EAFP
+            try:
+                result = extension.verify_cred(cred)
+                if result:
+                    return result
+            except AttributeError:
+                continue
+        # Could not verify cred
+        return False
+
     def _process_packet(self, pkt):
         """
         Pass each captured packet to each module.

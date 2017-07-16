@@ -52,6 +52,28 @@ class Extension2(object):
         return ["three", "four", "five"]
 """
 
+CONTENTS_EXTENSION_3 = """
+import os
+import importlib
+import struct
+
+class Extension3(object):
+
+    def __init__(self, shared_data):
+        pass
+
+    def get_packet(self, pkt):
+        return ([], [])
+
+    def send_output(self):
+        return []
+
+    def verify_cred(self, cred):
+        if cred[0] == "psk":
+            if cred[1] == "mypassword":
+                return True
+"""
+
 
 class TestExtensionManager(unittest.TestCase):
 
@@ -65,6 +87,9 @@ class TestExtensionManager(unittest.TestCase):
             f.close()
         with open("tests/extensions/extension2.py", "w") as f:
             f.write(CONTENTS_EXTENSION_2)
+            f.close()
+        with open("tests/extensions/extension3.py", "w") as f:
+            f.write(CONTENTS_EXTENSION_3)
             f.close()
 
     @mock.patch("wifiphisher.common.constants.DEFAULT_EXTENSIONS", ["extension1"])
@@ -127,6 +152,28 @@ class TestExtensionManager(unittest.TestCase):
         # Output has also been merged in one list.
         # Validate with send_output()
         assert em.get_output() == ["one", "two", "three", "four", "five"]
+
+    @mock.patch("wifiphisher.common.constants.DEFAULT_EXTENSIONS", ["extension3"])
+    @mock.patch(
+        "wifiphisher.common.constants.EXTENSIONS_LOADPATH",
+        "tests.extensions.")
+    def test_extension_verify(self):
+        # We need a NM to init EM
+        nm = interfaces.NetworkManager()
+        # Init an EM and pass some shared data
+        em = extensions.ExtensionManager(nm)
+        em.set_extensions(constants.DEFAULT_EXTENSIONS)
+        shared_data = {}
+        em.init_extensions(shared_data)
+        # Non-supported type of credential returns false
+        cred = ("domain_password", "mypassword")
+        assert em.verify_cred(cred) == False
+        # Supported type but wrong credential value
+        cred = ("psk", "secretpassword")
+        assert em.verify_cred(cred) == False
+        # Supported type and successfully verified credential
+        cred = ("psk", "mypassword")
+        assert em.verify_cred(cred) == True
 
     def tearDown(self):
         shutil.rmtree("tests/extensions")

@@ -725,7 +725,7 @@ class WifiphisherEngine:
             # Start HTTP server in a background thread
             print '[' + T + '*' + W + '] Starting HTTP/HTTPS server at ports ' + str(PORT) + ", " + str(SSL_PORT)
             webserver = Thread(target=phishinghttp.runHTTPServer,
-                               args=(NETWORK_GW_IP, PORT, SSL_PORT, template))
+                               args=(NETWORK_GW_IP, PORT, SSL_PORT, template, self.em))
             webserver.daemon = True
             webserver.start()
 
