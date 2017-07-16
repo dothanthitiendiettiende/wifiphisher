@@ -2,6 +2,7 @@ import logging
 import tornado.ioloop
 import tornado.web
 import os.path
+import wifiphisher.common.uimethods as uimethods
 from wifiphisher.common.constants import *
 
 hn = logging.NullHandler()
@@ -66,7 +67,6 @@ class CaptivePortalHandler(tornado.web.RequestHandler):
 
         # check if this is a valid phishing post request
         if self.request.headers["Content-Type"].startswith(VALID_POST_CONTENT_TYPE):
-
             post_data = tornado.escape.url_unescape(self.request.body)
             # log the data
             log_file_path = "/tmp/wifiphisher-webserver.tmp"
@@ -78,16 +78,22 @@ class CaptivePortalHandler(tornado.web.RequestHandler):
             terminate = True
 
 
-def runHTTPServer(ip, port, ssl_port, t):
+def runHTTPServer(ip, port, ssl_port, t, em):
     global template
     template = t
+
+    # Get all the UI funcs and set them to uimethods module
+    for f in em.get_ui_funcs():
+        setattr(uimethods, f.__name__, f)
+
     app = tornado.web.Application(
         [
             (r"/.*", CaptivePortalHandler)
         ],
         template_path=template.get_path(),
         static_path=template.get_path_static(),
-        compiled_template_cache=False
+        compiled_template_cache=False,
+        ui_methods=uimethods
     )
     app.listen(port, address=ip)
 
