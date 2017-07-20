@@ -35,7 +35,7 @@ class ExtensionManager(object):
       mode).
 
     * send_output(self): Method that returns in a list
-      of strings the entry logs that need to be output.
+      of strings the entry logs that we need to output.
     """
 
     def __init__(self, network_manager):
@@ -62,12 +62,31 @@ class ExtensionManager(object):
         self._send_thread = threading.Thread(target=self._send)
         self._channelhop_thread = threading.Thread(target=self._channel_hop)
 
+    def get_ui_funcs(self):
+        """
+        Returns a list of all the uimethods.
+
+        :param self: An ExtensionManager object
+        :type self: ExtensionManager
+        :return: List Object
+        :rtype: List
+        """
+
+        ui_funcs = []
+        for extension in self._extensions:
+            for m in dir(extension):
+                if callable(getattr(extension, m)):
+                    method = getattr(extension, m)
+                    if hasattr(method, "is_uimethod"):
+                        ui_funcs.append(method)
+        return ui_funcs
+
     def _channel_hop(self):
         """
         Change the interface's channel every three seconds
 
-        :param self: An AccessPointFinder object
-        :type self: AccessPointFinder
+        :param self: An ExtensionManager object
+        :type self: ExtensionManager
         :return: None
         :rtype: None
         .. note: The channel range is between 1 to 13
@@ -97,6 +116,8 @@ class ExtensionManager(object):
         """
         Sets interface for EM.
 
+        :param self: An ExtensionManager object
+        :type self: ExtensionManager
         :param interface: Interface name
         :type interface: String
         :return: None
@@ -110,6 +131,8 @@ class ExtensionManager(object):
         """
         Sets extensions for EM.
 
+        :param self: An ExtensionManager object
+        :type self: ExtensionManager
         :param extensions: List of str extension names
         :type extensions: List
         :return: None
@@ -225,6 +248,9 @@ class ExtensionManager(object):
             if m_output and len(m_output) > 0:
                 output += m_output
         return output
+
+    def get_extensions():
+        return self._extensions()
 
     def verify_cred(self, cred):
         for extension in self._extensions:
