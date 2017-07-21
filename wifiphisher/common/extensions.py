@@ -249,9 +249,6 @@ class ExtensionManager(object):
                 output += m_output
         return output
 
-    def get_extensions():
-        return self._extensions()
-
     def _process_packet(self, pkt):
         """
         Pass each captured packet to each module.
