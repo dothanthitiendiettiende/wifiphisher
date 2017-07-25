@@ -1,7 +1,6 @@
 import logging
 import json
 from tornado.escape import json_decode
-from tornado.escape import json_encode
 import tornado.ioloop
 import tornado.web
 import os.path
