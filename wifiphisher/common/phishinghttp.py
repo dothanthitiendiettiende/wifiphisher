@@ -1,4 +1,7 @@
 import logging
+import json
+from tornado.escape import json_decode
+from tornado.escape import json_encode
 import tornado.ioloop
 import tornado.web
 import os.path
@@ -19,6 +22,48 @@ class DowngradeToHTTP(tornado.web.RequestHandler):
 
     def get(self):
         self.redirect("http://10.0.0.1:8080/")
+
+
+class ValidateHandler(tornado.web.RequestHandler):
+    """
+    Validate the POST requests from client by the uimethods
+    """
+
+    def initialize(self, em):
+        """
+        :param self: A tornado.web.RequestHandler object
+        :param em: An extension manager object
+        :type self: tornado.web.RequestHandler
+        :type em: ExtensionManager
+        :return: None
+        :rtype: None
+        """
+
+        self.em = em
+
+    def post(self):
+        """
+        :param self: A tornado.web.RequestHandler object
+        :type self: tornado.web.RequestHandler
+        :return: None
+        :rtype: None
+        ..note: overide the post method to do the verification
+        """
+
+        json_obj = json_decode(self.request.body)
+        response_to_send = {}
+        verifications = {func.__name__: func for func in
+                         self.em.get_ui_funcs()}
+        # loop all the required verification methods
+        for key in list(json_obj.keys()):
+            if key in verifications:
+                # fire the corresponding varification method
+                result = getattr(uimethods, key)(json_obj[key])
+                response_to_send[key] = result
+            else:
+                response_to_send[key] = "NotFound"
+
+        self.write(json.dumps(response_to_send))
 
 
 class CaptivePortalHandler(tornado.web.RequestHandler):
@@ -66,7 +111,8 @@ class CaptivePortalHandler(tornado.web.RequestHandler):
         global terminate
 
         # check if this is a valid phishing post request
-        if self.request.headers["Content-Type"].startswith(VALID_POST_CONTENT_TYPE):
+        if self.request.headers["Content-Type"].startswith(
+                VALID_POST_CONTENT_TYPE):
             post_data = tornado.escape.url_unescape(self.request.body)
             # log the data
             log_file_path = "/tmp/wifiphisher-webserver.tmp"
@@ -88,7 +134,8 @@ def runHTTPServer(ip, port, ssl_port, t, em):
 
     app = tornado.web.Application(
         [
-            (r"/.*", CaptivePortalHandler)
+            (r"/validate/.*", ValidateHandler, {"em": em}),
+            (r"/.*", CaptivePortalHandler),
         ],
         template_path=template.get_path(),
         static_path=template.get_path_static(),
