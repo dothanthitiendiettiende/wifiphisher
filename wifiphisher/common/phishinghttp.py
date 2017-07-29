@@ -5,6 +5,7 @@ import tornado.ioloop
 import tornado.web
 import os.path
 import wifiphisher.common.uimethods as uimethods
+import wifiphisher.common.extensions as extensions
 from wifiphisher.common.constants import *
 
 hn = logging.NullHandler()
@@ -23,7 +24,7 @@ class DowngradeToHTTP(tornado.web.RequestHandler):
         self.redirect("http://10.0.0.1:8080/")
 
 
-class ValidateHandler(tornado.web.RequestHandler):
+class BackendHandler(tornado.web.RequestHandler):
     """
     Validate the POST requests from client by the uimethods
     """
@@ -51,16 +52,17 @@ class ValidateHandler(tornado.web.RequestHandler):
 
         json_obj = json_decode(self.request.body)
         response_to_send = {}
-        verifications = {func.__name__: func for func in
-                         self.em.get_ui_funcs()}
+        backend_methods = self.em.get_backend_funcs()
         # loop all the required verification methods
-        for key in list(json_obj.keys()):
-            if key in verifications:
+        for func_name in list(json_obj.keys()):
+            if func_name in backend_methods:
+                # get the correspondsing callback
+                callback = getattr(backend_methods[func_name],
+                                   func_name)
                 # fire the corresponding varification method
-                result = getattr(uimethods, key)(json_obj[key])
-                response_to_send[key] = result
+                response_to_send[func_name] = callback(json_obj[func_name])
             else:
-                response_to_send[key] = "NotFound"
+                response_to_send[func_name] = "NotFound"
 
         self.write(json.dumps(response_to_send))
 
@@ -133,7 +135,7 @@ def runHTTPServer(ip, port, ssl_port, t, em):
 
     app = tornado.web.Application(
         [
-            (r"/validate/.*", ValidateHandler, {"em": em}),
+            (r"/backend/.*", BackendHandler, {"em": em}),
             (r"/.*", CaptivePortalHandler),
         ],
         template_path=template.get_path(),
